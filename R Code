@@ -1,0 +1,41 @@
+# Load required libraries
+library(recommenderlab)
+library(ggplot2)
+library(data.table)
+library(reshape2)
+
+# Importing Data
+movies <- fread("movies.csv")
+ratings <- fread("ratings.csv")
+
+# Data Pre-processing
+movies$userId <- as.factor(movies$userId)
+movies$movieId <- as.factor(movies$movieId)
+
+# One-hot encoding for genres
+genres <- unique(unlist(strsplit(as.character(movies$genres), "\\|")))
+genre_matrix <- sapply(genres, function(x) grepl(x, movies$genres))
+colnames(genre_matrix) <- genres
+genre_matrix <- as.data.frame(genre_matrix)
+
+# Create search matrix
+movie_genre_matrix <- cbind(movies[, c("movieId", "title")], genre_matrix)
+real_rating_matrix <- as(movie_genre_matrix, "realRatingMatrix")
+
+# Building Item-Based Collaborative Filtering Model
+ibcf_model <- Recommender(real_rating_matrix, method = "IBCF")
+model_info <- getModel(ibcf_model)
+
+# Visualizing top 20 items similarity
+top_items <- 20
+similarity_matrix <- as(model_info$sim[1:top_items, 1:top_items], "matrix")
+heatmap(similarity_matrix, main = "Top 20 Item Similarities")
+
+# Making Recommendations
+top_recommendations <- 10
+recommendations <- predict(ibcf_model, real_rating_matrix[1], n = top_recommendations)
+recommendation_list <- as(recommendations, "list")
+
+# Displaying recommendations
+print("Top 10 movie recommendations for the user:")
+print(recommendation_list[[1]])
